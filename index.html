@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>虹美廚坊 - 線上點餐</title>
     <style>
-      /* --- 前次的基本排版與菜單設計保持不變 --- */
+      /* --- 原有排版與菜單設計 --- */
       body {
         font-family: "微軟正黑體", "Noto Sans TC", sans-serif;
         margin: 0;
@@ -121,7 +121,7 @@
         }
       }
 
-      /* --- 新增：登入區塊樣式 --- */
+      /* --- 登入區塊樣式 --- */
       .auth-container {
         max-width: 1000px;
         margin: 0 auto 20px auto;
@@ -153,10 +153,143 @@
       .auth-btn.logout {
         display: none;
       }
+
+      /* --- 新增：購物車浮動按鈕與視窗樣式 --- */
+      .cart-float-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background-color: #d83b3b;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 30px;
+        font-size: 1.1em;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .cart-badge {
+        background-color: #ffcc00;
+        color: #333;
+        border-radius: 50%;
+        padding: 2px 8px;
+        font-size: 0.9em;
+      }
+
+      /* 視窗背景遮罩 */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        justify-content: center;
+        align-items: center;
+      }
+      /* 視窗本體 */
+      .modal-content {
+        background: white;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+      }
+      .close-btn {
+        font-size: 1.5em;
+        cursor: pointer;
+        color: #888;
+      }
+      .close-btn:hover {
+        color: #333;
+      }
+
+      /* 購物車明細列表 */
+      .cart-items-container {
+        overflow-y: auto;
+        flex-grow: 1;
+        margin-bottom: 15px;
+      }
+      .cart-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px dashed #eee;
+      }
+      .cart-item-info {
+        flex-grow: 1;
+      }
+      .cart-item-name {
+        font-weight: bold;
+      }
+      .cart-item-price {
+        color: #888;
+        font-size: 0.9em;
+      }
+      .cart-item-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .qty-btn {
+        background: #eee;
+        border: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      /* 結帳區 */
+      .cart-footer {
+        text-align: right;
+        border-top: 2px solid #eee;
+        padding-top: 15px;
+      }
+      .cart-total {
+        font-size: 1.3em;
+        font-weight: bold;
+        color: #d83b3b;
+        margin-bottom: 15px;
+      }
+      .checkout-btn {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 1.1em;
+        cursor: pointer;
+        width: 100%;
+        font-weight: bold;
+      }
+      .checkout-btn:hover {
+        background-color: #45a049;
+      }
     </style>
   </head>
   <body>
-    <!-- 登入狀態與按鈕區塊 -->
+    <!-- 登入區塊 -->
     <div class="auth-container">
       <span id="user-info" class="user-info"></span>
       <button id="login-btn" class="auth-btn login">Google 帳號登入</button>
@@ -173,9 +306,31 @@
 
     <main id="menu-container"></main>
 
-    <!-- 注意：type 必須設定為 module 才能使用 Firebase v9+ 的 import 語法 -->
+    <!-- 新增：右下角浮動購物車按鈕 -->
+    <div id="cart-float-btn" class="cart-float-btn">
+      🛒 購物車 <span id="cart-count" class="cart-badge">0</span>
+    </div>
+
+    <!-- 新增：購物車明細視窗 -->
+    <div id="cart-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 style="margin: 0">訂單明細</h2>
+          <span class="close-btn" id="close-modal-btn">&times;</span>
+        </div>
+        <div id="cart-items-container" class="cart-items-container">
+          <!-- 購物車內容會動態產生在這裡 -->
+        </div>
+        <div class="cart-footer">
+          <div class="cart-total">
+            總計: $<span id="cart-total-price">0</span>
+          </div>
+          <button id="checkout-btn" class="checkout-btn">送出訂單</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module">
-      // 1. 載入 Firebase 核心與驗證模組
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
         getAuth,
@@ -185,7 +340,7 @@
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-      // 2. 替換成您的 Firebase 專案設定檔 (在第一階段取得)
+      // !!! 請貼上您剛剛測試成功的 Firebase 金鑰 !!!
       const firebaseConfig = {
         apiKey: "AIzaSyDdE3B1QPHTpcpn5i2B54jLBFIKpdrEb8g",
         authDomain: "hongmei-kitchen.firebaseapp.com",
@@ -195,43 +350,26 @@
         appId: "1:699922108037:web:332b78249cc60eb316e3ec",
       };
 
-      // 3. 初始化 Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
-
-      // 紀錄目前使用者的變數
       let currentUser = null;
 
-      // 4. 綁定按鈕與處理登入/登出邏輯
       const loginBtn = document.getElementById("login-btn");
       const logoutBtn = document.getElementById("logout-btn");
       const userInfo = document.getElementById("user-info");
 
-      loginBtn.addEventListener("click", () => {
-        signInWithPopup(auth, provider).catch((error) => {
-          console.error("登入失敗：", error);
-          alert("登入失敗，請重試。");
-        });
-      });
+      loginBtn.addEventListener("click", () => signInWithPopup(auth, provider));
+      logoutBtn.addEventListener("click", () => signOut(auth));
 
-      logoutBtn.addEventListener("click", () => {
-        signOut(auth).then(() => {
-          alert("已成功登出");
-        });
-      });
-
-      // 5. 監聽登入狀態改變 (會自動更新 UI)
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          // 已登入：儲存使用者資訊，顯示名稱與登出按鈕，隱藏登入按鈕
           currentUser = user;
           userInfo.textContent = `哈囉，${user.displayName}`;
           userInfo.style.display = "inline";
           logoutBtn.style.display = "inline-block";
           loginBtn.style.display = "none";
         } else {
-          // 未登入：清空資訊，顯示登入按鈕，隱藏登出與名稱
           currentUser = null;
           userInfo.style.display = "none";
           logoutBtn.style.display = "none";
@@ -240,7 +378,115 @@
       });
 
       // ==========================================
-      // 菜單渲染邏輯 (結合登入檢查)
+      // 新增：購物車邏輯 (LocalStorage)
+      // ==========================================
+
+      // 1. 從 LocalStorage 讀取歷史資料，如果沒有就給空陣列
+      let cart = JSON.parse(localStorage.getItem("hongmei_cart")) || [];
+
+      // 取得 UI 元素
+      const cartFloatBtn = document.getElementById("cart-float-btn");
+      const cartModal = document.getElementById("cart-modal");
+      const closeModalBtn = document.getElementById("close-modal-btn");
+      const cartItemsContainer = document.getElementById(
+        "cart-items-container",
+      );
+      const cartCountEl = document.getElementById("cart-count");
+      const cartTotalPriceEl = document.getElementById("cart-total-price");
+      const checkoutBtn = document.getElementById("checkout-btn");
+
+      // 開關購物車視窗
+      cartFloatBtn.addEventListener("click", () => {
+        renderCartUI();
+        cartModal.style.display = "flex";
+      });
+      closeModalBtn.addEventListener(
+        "click",
+        () => (cartModal.style.display = "none"),
+      );
+
+      // 點擊遮罩處關閉視窗
+      cartModal.addEventListener("click", (e) => {
+        if (e.target === cartModal) cartModal.style.display = "none";
+      });
+
+      // 2. 更新購物車 UI 與儲存資料的核心函數
+      function updateCart() {
+        // 將陣列轉為文字存入瀏覽器
+        localStorage.setItem("hongmei_cart", JSON.stringify(cart));
+        // 更新右下角數字
+        const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+        cartCountEl.textContent = totalQty;
+      }
+
+      // 3. 渲染視窗內的明細列表
+      function renderCartUI() {
+        cartItemsContainer.innerHTML = ""; // 清空現有內容
+        let totalPrice = 0;
+
+        if (cart.length === 0) {
+          cartItemsContainer.innerHTML =
+            '<p style="text-align:center; color:#888;">購物車目前是空的喔！</p>';
+        } else {
+          cart.forEach((item, index) => {
+            totalPrice += item.price * item.qty;
+            const row = document.createElement("div");
+            row.className = "cart-item-row";
+            row.innerHTML = `
+                        <div class="cart-item-info">
+                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-price">$${item.price} / 份</div>
+                        </div>
+                        <div class="cart-item-controls">
+                            <button class="qty-btn" onclick="window.changeQty(${index}, -1)">-</button>
+                            <span>${item.qty}</span>
+                            <button class="qty-btn" onclick="window.changeQty(${index}, 1)">+</button>
+                        </div>
+                    `;
+            cartItemsContainer.appendChild(row);
+          });
+        }
+        cartTotalPriceEl.textContent = totalPrice;
+      }
+
+      // 4. 增減數量的函數 (掛載到 window 以便 onclick 呼叫)
+      window.changeQty = function (index, delta) {
+        cart[index].qty += delta;
+        // 如果數量降到 0，就從陣列中移除該項目
+        if (cart[index].qty <= 0) {
+          cart.splice(index, 1);
+        }
+        updateCart();
+        renderCartUI(); // 重新渲染畫面
+      };
+
+      // 5. 將餐點加入購物車
+      function addToCart(name, price) {
+        if (!currentUser) {
+          alert("請先使用上方 Google 帳號登入，才能點餐喔！");
+          return;
+        }
+        // 檢查購物車內是否已經有這項餐點
+        const existingItem = cart.find((item) => item.name === name);
+        if (existingItem) {
+          existingItem.qty += 1;
+        } else {
+          // 沒有的話就加入新的一筆
+          cart.push({ name: name, price: price, qty: 1 });
+        }
+        updateCart();
+
+        // 顯示一個小提示
+        const btn = document.getElementById("cart-float-btn");
+        btn.style.transform = "scale(1.1)";
+        setTimeout(() => (btn.style.transform = "scale(1)"), 200);
+      }
+
+      // 初始化執行一次更新，讓重新整理後按鈕上依然顯示正確數字
+      updateCart();
+
+      // ==========================================
+      // 菜單渲染邏輯
       // ==========================================
       const menuData = {
         restaurantInfo: { discount: "優惠：凡自帶餐盒、杯子折5元" },
@@ -321,7 +567,6 @@
             ? `<div class="item-meta">${item.calories} 卡</div>`
             : "";
 
-          // 卡片主體
           itemDiv.innerHTML = `
                     <div>
                         <div class="item-name">${item.name}</div>
@@ -332,25 +577,32 @@
                     </div>
                 `;
 
-          // 動態建立按鈕，並綁定點擊事件 (確保能夠讀取 currentUser 狀態)
           const addBtn = document.createElement("button");
           addBtn.className = "add-btn";
           addBtn.textContent = "＋";
+          // ★ 修改點：將原本的 alert 改成呼叫加入購物車函數 ★
           addBtn.addEventListener("click", () => {
-            if (!currentUser) {
-              alert("請先使用上方 Google 帳號登入，才能點餐喔！");
-              return;
-            }
-            alert(`準備將【${item.name}】加入購物車！`);
+            addToCart(item.name, item.price);
           });
 
-          // 將按鈕加入卡片底部
           itemDiv.querySelector(".item-bottom").appendChild(addBtn);
           itemGroup.appendChild(itemDiv);
         });
-
         section.appendChild(itemGroup);
         container.appendChild(section);
+      });
+
+      // 結帳按鈕 (先保留，下一階段串接 GAS 會用到)
+      checkoutBtn.addEventListener("click", () => {
+        if (cart.length === 0) {
+          alert("購物車是空的喔！");
+          return;
+        }
+        if (!currentUser) {
+          alert("請確認登入狀態");
+          return;
+        }
+        alert("即將前往結帳！(稍後會在這裡串接 Google 試算表寫入功能)");
       });
     </script>
   </body>
