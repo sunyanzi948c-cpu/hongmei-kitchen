@@ -259,7 +259,22 @@
         cursor: pointer;
         font-weight: bold;
       }
-
+      /* 新增：清空購物車按鈕樣式 */
+      .clear-btn {
+        background: none;
+        border: 1px solid #ccc;
+        color: #666;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: all 0.2s;
+      }
+      .clear-btn:hover {
+        background: #ffeeee;
+        border-color: #d83b3b;
+        color: #d83b3b;
+      }
       /* 結帳區 */
       .cart-footer {
         text-align: right;
@@ -343,8 +358,17 @@
           <!-- 購物車內容會動態產生在這裡 -->
         </div>
         <div class="cart-footer">
-          <div class="cart-total">
-            總計: $<span id="cart-total-price">0</span>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 15px;
+            ">
+            <button id="clear-cart-btn" class="clear-btn">🗑️ 清空購物車</button>
+            <div class="cart-total" style="margin-bottom: 0">
+              總計: $<span id="cart-total-price">0</span>
+            </div>
           </div>
 
           <!-- 新增：實名制輸入表單 -->
@@ -440,6 +464,7 @@
       const cartCountEl = document.getElementById("cart-count");
       const cartTotalPriceEl = document.getElementById("cart-total-price");
       const checkoutBtn = document.getElementById("checkout-btn");
+      const clearCartBtn = document.getElementById("clear-cart-btn");
 
       // 開關購物車視窗
       cartFloatBtn.addEventListener("click", () => {
@@ -450,6 +475,21 @@
         "click",
         () => (cartModal.style.display = "none"),
       );
+
+      //  新增：清空購物車的點擊事件
+      clearCartBtn.addEventListener("click", () => {
+        if (cart.length === 0) {
+          alert("購物車已經是空的囉！");
+          return;
+        }
+
+        // 加入防呆確認視窗
+        if (confirm("確定要清空所有已選購的餐點嗎？")) {
+          cart = []; // 清空資料陣列
+          updateCart(); // 更新右下角浮動按鈕數字與 LocalStorage
+          renderCartUI(); // 重新渲染視窗內的明細畫面
+        }
+      });
 
       // 點擊遮罩處關閉視窗
       cartModal.addEventListener("click", (e) => {
@@ -703,7 +743,7 @@
             // 清空輸入框
             document.getElementById("buyer-name").value = "";
             document.getElementById("buyer-phone").value = "";
-            document.getElementById('order-notes').value = '';
+            document.getElementById("order-notes").value = "";
           } else {
             alert("訂單送出失敗，請稍後再試。錯誤訊息：" + result.message);
           }
