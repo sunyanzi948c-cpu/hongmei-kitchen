@@ -1,0 +1,63 @@
+{
+  "restaurantInfo": {
+    "name": "虹美廚坊",
+    "phone": "08-7385101",
+    "address": "屏東市豐榮街32號",
+    "businessHours": "週一至週五 9:00~13:00、14:00~19:00",
+    "mealTimes": "10:30~13:00、16:30~19:00",
+    "discount": "凡自帶餐盒、杯子折5元",
+    "notes": ["低油/低鹽/低糖", "搭配內容固定恕無法客製"]
+  },
+  "menu": [
+    {
+      "category": "午/晚餐系列",
+      "items": [
+        { "name": "鮭魚", "calories": 598, "price": 190 },
+        { "name": "歐美佳嚴選鯖魚(招牌菜)", "calories": 725, "price": 160 },
+        { "name": "紅燒秋刀魚", "calories": 632, "price": 130 },
+        { "name": "香烤虱目魚肚", "calories": 747, "price": 150 },
+        { "name": "三杯雞", "calories": 608, "price": 130 },
+        { "name": "蔥燒雞腿", "calories": 652, "price": 130 },
+        { "name": "大烤雞腿", "calories": 713, "price": 150 },
+        { "name": "日式燒肉", "calories": 670, "price": 130 },
+        { "name": "烤鮭魚下巴", "calories": 561, "price": 150 },
+        { "name": "蔬菜", "calories": 437, "price": 90 },
+        { "name": "幸福餐盒(日式燒肉)", "calories": 423, "price": 90 },
+        { "name": "幸福餐盒(三杯雞)", "calories": 431, "price": 90 },
+        { "name": "幸福餐盒(秋刀魚)", "calories": 395, "price": 90 }
+      ]
+    },
+    {
+      "category": "單點系列",
+      "items": [
+        { "name": "鮭魚", "price": 140 },
+        { "name": "鯖魚", "price": 110 },
+        { "name": "秋刀魚", "price": 90 },
+        { "name": "虱目魚肚", "price": 105 },
+        { "name": "烤鮭魚下巴", "price": 105 },
+        { "name": "燒肉", "price": 90 },
+        { "name": "滷雞腿", "price": 95 },
+        { "name": "三杯雞", "price": 90 },
+        { "name": "大烤雞腿", "price": 115 }
+      ]
+    },
+    {
+      "category": "豆漿 | 綠拿鐵 | 湯品",
+      "items": [
+        { "name": "有糖(赤藻糖)原味豆漿", "calories": 102, "price": 40 },
+        { "name": "無糖原味豆漿", "calories": 102, "price": 35 },
+        { "name": "綠拿鐵", "calories": 286, "price": 99 },
+        { "name": "白木耳", "calories": 76, "price": 50 }
+      ]
+    },
+    {
+      "category": "饅頭系列",
+      "items": [
+        { "name": "芋頭饅頭", "calories": 215, "price": 35 },
+        { "name": "南瓜饅頭", "calories": 279, "price": 35 },
+        { "name": "桂圓紅棗饅頭", "calories": 186, "price": 35 },
+        { "name": "紅藜堅果饅頭", "calories": 297, "price": 35 }
+      ]
+    }
+  ]
+}

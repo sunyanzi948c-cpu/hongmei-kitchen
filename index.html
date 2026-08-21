@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>虹美廚坊 - 線上點餐</title>
+    <style>
+      /* --- 前次的基本排版與菜單設計保持不變 --- */
+      body {
+        font-family: "微軟正黑體", "Noto Sans TC", sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #fdfaf4;
+        color: #333;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 30px;
+        position: relative;
+      }
+      header h1 {
+        color: #d83b3b;
+        margin-bottom: 5px;
+      }
+      header p {
+        color: #666;
+        font-size: 0.9em;
+      }
+      .category-section {
+        margin-bottom: 40px;
+        max-width: 1000px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .category-title {
+        border-bottom: 3px solid #ffcc00;
+        display: inline-block;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        font-size: 1.4em;
+      }
+      .item-group {
+        display: flex;
+        overflow-x: auto;
+        gap: 20px;
+        padding-bottom: 15px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+      }
+      .item-group::-webkit-scrollbar {
+        height: 8px;
+      }
+      .item-group::-webkit-scrollbar-track {
+        background: #eee;
+        border-radius: 4px;
+      }
+      .item-group::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 4px;
+      }
+      .item-group::-webkit-scrollbar-thumb:hover {
+        background: #aaa;
+      }
+      .item {
+        flex: 0 0 auto;
+        width: 260px;
+        background: white;
+        border: 1px solid #ebebeb;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        scroll-snap-align: start;
+      }
+      .item-name {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .item-meta {
+        font-size: 0.85em;
+        color: #888;
+        margin-bottom: 15px;
+        background-color: #f4f4f4;
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+      }
+      .item-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+      }
+      .item-price {
+        font-size: 1.3em;
+        color: #d83b3b;
+        font-weight: bold;
+      }
+      .add-btn {
+        background-color: #ffcc00;
+        color: #333;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        transition:
+          background 0.2s,
+          transform 0.1s;
+      }
+      .add-btn:hover {
+        background-color: #e6b800;
+        transform: scale(1.05);
+      }
+      @media (max-width: 600px) {
+        .item {
+          width: 75vw;
+        }
+      }
+
+      /* --- 新增：登入區塊樣式 --- */
+      .auth-container {
+        max-width: 1000px;
+        margin: 0 auto 20px auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+      }
+      .user-info {
+        font-weight: bold;
+        color: #2e7d32;
+        display: none;
+      }
+      .auth-btn {
+        padding: 8px 16px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        background-color: white;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .auth-btn.login {
+        border-color: #4285f4;
+        color: #4285f4;
+      }
+      .auth-btn.login:hover {
+        background-color: #f4f8ff;
+      }
+      .auth-btn.logout {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 登入狀態與按鈕區塊 -->
+    <div class="auth-container">
+      <span id="user-info" class="user-info"></span>
+      <button id="login-btn" class="auth-btn login">Google 帳號登入</button>
+      <button id="logout-btn" class="auth-btn logout">登出</button>
+    </div>
+
+    <header>
+      <h1>虹美廚坊 線上點餐</h1>
+      <p>讓食物成為您的藥，不要讓藥成為您的食物。</p>
+      <p
+        id="discount-info"
+        style="color: #2e7d32; font-weight: bold; font-size: 0.9em"></p>
+    </header>
+
+    <main id="menu-container"></main>
+
+    <!-- 注意：type 必須設定為 module 才能使用 Firebase v9+ 的 import 語法 -->
+    <script type="module">
+      // 1. 載入 Firebase 核心與驗證模組
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        signInWithPopup,
+        GoogleAuthProvider,
+        onAuthStateChanged,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+      // 2. 替換成您的 Firebase 專案設定檔 (在第一階段取得)
+      const firebaseConfig = {
+        apiKey: "AIzaSyDdE3B1QPHTpcpn5i2B54jLBFIKpdrEb8g",
+        authDomain: "hongmei-kitchen.firebaseapp.com",
+        projectId: "hongmei-kitchen",
+        storageBucket: "hongmei-kitchen.firebasestorage.app",
+        messagingSenderId: "699922108037",
+        appId: "1:699922108037:web:332b78249cc60eb316e3ec",
+      };
+
+      // 3. 初始化 Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+
+      // 紀錄目前使用者的變數
+      let currentUser = null;
+
+      // 4. 綁定按鈕與處理登入/登出邏輯
+      const loginBtn = document.getElementById("login-btn");
+      const logoutBtn = document.getElementById("logout-btn");
+      const userInfo = document.getElementById("user-info");
+
+      loginBtn.addEventListener("click", () => {
+        signInWithPopup(auth, provider).catch((error) => {
+          console.error("登入失敗：", error);
+          alert("登入失敗，請重試。");
+        });
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        signOut(auth).then(() => {
+          alert("已成功登出");
+        });
+      });
+
+      // 5. 監聽登入狀態改變 (會自動更新 UI)
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // 已登入：儲存使用者資訊，顯示名稱與登出按鈕，隱藏登入按鈕
+          currentUser = user;
+          userInfo.textContent = `哈囉，${user.displayName}`;
+          userInfo.style.display = "inline";
+          logoutBtn.style.display = "inline-block";
+          loginBtn.style.display = "none";
+        } else {
+          // 未登入：清空資訊，顯示登入按鈕，隱藏登出與名稱
+          currentUser = null;
+          userInfo.style.display = "none";
+          logoutBtn.style.display = "none";
+          loginBtn.style.display = "inline-block";
+        }
+      });
+
+      // ==========================================
+      // 菜單渲染邏輯 (結合登入檢查)
+      // ==========================================
+      const menuData = {
+        restaurantInfo: { discount: "優惠：凡自帶餐盒、杯子折5元" },
+        menu: [
+          {
+            category: "午/晚餐系列",
+            items: [
+              { name: "鮭魚", calories: 598, price: 190 },
+              { name: "歐美佳嚴選鯖魚(招牌菜)", calories: 725, price: 160 },
+              { name: "紅燒秋刀魚", calories: 632, price: 130 },
+              { name: "香烤虱目魚肚", calories: 747, price: 150 },
+              { name: "三杯雞", calories: 608, price: 130 },
+              { name: "蔥燒雞腿", calories: 652, price: 130 },
+              { name: "大烤雞腿", calories: 713, price: 150 },
+              { name: "日式燒肉", calories: 670, price: 130 },
+              { name: "烤鮭魚下巴", calories: 561, price: 150 },
+              { name: "蔬菜", calories: 437, price: 90 },
+              { name: "幸福餐盒(日式燒肉)", calories: 423, price: 90 },
+              { name: "幸福餐盒(三杯雞)", calories: 431, price: 90 },
+              { name: "幸福餐盒(秋刀魚)", calories: 395, price: 90 },
+            ],
+          },
+          {
+            category: "單點系列",
+            items: [
+              { name: "鮭魚", price: 140 },
+              { name: "鯖魚", price: 110 },
+              { name: "秋刀魚", price: 90 },
+              { name: "虱目魚肚", price: 105 },
+              { name: "烤鮭魚下巴", price: 105 },
+              { name: "燒肉", price: 90 },
+              { name: "滷雞腿", price: 95 },
+              { name: "三杯雞", price: 90 },
+              { name: "大烤雞腿", price: 115 },
+            ],
+          },
+          {
+            category: "豆漿 | 綠拿鐵 | 湯品",
+            items: [
+              { name: "有糖(赤藻糖)原味豆漿", calories: 102, price: 40 },
+              { name: "無糖原味豆漿", calories: 102, price: 35 },
+              { name: "綠拿鐵", calories: 286, price: 99 },
+              { name: "白木耳", calories: 76, price: 50 },
+            ],
+          },
+          {
+            category: "饅頭系列",
+            items: [
+              { name: "芋頭饅頭", calories: 215, price: 35 },
+              { name: "南瓜饅頭", calories: 279, price: 35 },
+              { name: "桂圓紅棗饅頭", calories: 186, price: 35 },
+              { name: "紅藜堅果饅頭", calories: 297, price: 35 },
+            ],
+          },
+        ],
+      };
+
+      document.getElementById("discount-info").textContent =
+        menuData.restaurantInfo.discount;
+      const container = document.getElementById("menu-container");
+
+      menuData.menu.forEach((categoryData) => {
+        const section = document.createElement("div");
+        section.className = "category-section";
+
+        const title = document.createElement("h2");
+        title.className = "category-title";
+        title.textContent = categoryData.category;
+        section.appendChild(title);
+
+        const itemGroup = document.createElement("div");
+        itemGroup.className = "item-group";
+
+        categoryData.items.forEach((item) => {
+          const itemDiv = document.createElement("div");
+          itemDiv.className = "item";
+          const caloriesHtml = item.calories
+            ? `<div class="item-meta">${item.calories} 卡</div>`
+            : "";
+
+          // 卡片主體
+          itemDiv.innerHTML = `
+                    <div>
+                        <div class="item-name">${item.name}</div>
+                        ${caloriesHtml}
+                    </div>
+                    <div class="item-bottom">
+                        <div class="item-price">$${item.price}</div>
+                    </div>
+                `;
+
+          // 動態建立按鈕，並綁定點擊事件 (確保能夠讀取 currentUser 狀態)
+          const addBtn = document.createElement("button");
+          addBtn.className = "add-btn";
+          addBtn.textContent = "＋";
+          addBtn.addEventListener("click", () => {
+            if (!currentUser) {
+              alert("請先使用上方 Google 帳號登入，才能點餐喔！");
+              return;
+            }
+            alert(`準備將【${item.name}】加入購物車！`);
+          });
+
+          // 將按鈕加入卡片底部
+          itemDiv.querySelector(".item-bottom").appendChild(addBtn);
+          itemGroup.appendChild(itemDiv);
+        });
+
+        section.appendChild(itemGroup);
+        container.appendChild(section);
+      });
+    </script>
+  </body>
+</html>
