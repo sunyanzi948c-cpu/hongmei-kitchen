@@ -286,6 +286,27 @@
       .checkout-btn:hover {
         background-color: #45a049;
       }
+
+      /* --- 結帳輸入框樣式 --- */
+      .checkout-form {
+        margin-bottom: 15px;
+        text-align: left;
+      }
+      .checkout-form label {
+        display: block;
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .checkout-form input {
+        width: calc(100% - 20px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-family: inherit;
+      }
     </style>
   </head>
   <body>
@@ -325,6 +346,24 @@
           <div class="cart-total">
             總計: $<span id="cart-total-price">0</span>
           </div>
+
+          <!-- 新增：實名制輸入表單 -->
+          <div class="checkout-form">
+            <label for="buyer-name">真實姓名：</label>
+            <input
+              type="text"
+              id="buyer-name"
+              placeholder="請輸入取餐人姓名"
+              required />
+
+            <label for="buyer-phone">聯絡電話：</label>
+            <input
+              type="tel"
+              id="buyer-phone"
+              placeholder="請輸入手機號碼"
+              required />
+          </div>
+
           <button id="checkout-btn" class="checkout-btn">送出訂單</button>
         </div>
       </div>
@@ -463,7 +502,9 @@
       // 5. 將餐點加入購物車
       function addToCart(name, price) {
         if (!currentUser) {
-          alert("請先使用上方 Google 帳號登入，才能點餐喔！");
+          alert(
+            "為了保障您的訂單權益並防範惡意下單，本系統採實名認證。請先使用上方 Google 帳號登入進行驗證，謝謝您的配合！",
+          );
           return;
         }
         // 檢查購物車內是否已經有這項餐點
@@ -592,18 +633,79 @@
         container.appendChild(section);
       });
 
-      // 結帳按鈕 (先保留，下一階段串接 GAS 會用到)
-      checkoutBtn.addEventListener("click", () => {
-        if (cart.length === 0) {
-          alert("購物車是空的喔！");
-          return;
-        }
-        if (!currentUser) {
-          alert("請確認登入狀態");
-          return;
-        }
-        alert("即將前往結帳！(稍後會在這裡串接 Google 試算表寫入功能)");
-      });
+      // ==========================================
+        // 結帳與發送資料到 Google 試算表 (GAS)
+        // ==========================================
+        checkoutBtn.addEventListener('click', async () => {
+            if (cart.length === 0) {
+                alert('購物車是空的喔！');
+                return;
+            }
+            if (!currentUser) {
+                alert('請先使用上方 Google 帳號登入！');
+                return;
+            }
+
+            const buyerName = document.getElementById('buyer-name').value.trim();
+            const buyerPhone = document.getElementById('buyer-phone').value.trim();
+
+            if (!buyerName || !buyerPhone) {
+                alert('請填寫完整的真實姓名與聯絡電話！');
+                return;
+            }
+
+            // 防呆：將按鈕鎖定並改變文字，避免重複點擊
+            checkoutBtn.disabled = true;
+            checkoutBtn.textContent = '訂單傳送中...';
+            checkoutBtn.style.backgroundColor = '#ccc';
+
+            // 準備要傳送的資料包裝成 JSON
+            const orderData = {
+                email: currentUser.email,        // Google 登入的 Email
+                googleName: currentUser.displayName,
+                realName: buyerName,             // 顧客填寫的真實姓名
+                phone: buyerPhone,               // 顧客填寫的電話
+                cart: cart,                      // 購物車內容陣列
+                total: cart.reduce((sum, item) => sum + item.price * item.qty, 0)
+            };
+
+            // ★★★ 請在部署完 GAS 後，將網址貼到這裡 ★★★
+            const gasAPI = "https://script.google.com/macros/s/AKfycbyqEY8Tlxrj3FDgVqnOT92dMD0EhZqsghrqJ2BbUV_DBI_eXt2YaRCtiPzJGjvZJqFs/exec"; 
+
+            try {
+                // 將資料以 POST 方式送到 GAS
+                const response = await fetch(gasAPI, {
+                    method: 'POST',
+                    // 注意：如果是 text/plain 可以避開 CORS 跨網域存取限制，GAS 後端照樣能用 JSON.parse 解析
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                    body: JSON.stringify(orderData)
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('🎉 訂單送出成功！感謝您的訂購。');
+                    // 清空購物車
+                    cart = [];
+                    updateCart();
+                    renderCartUI();
+                    cartModal.style.display = 'none';
+                    // 清空輸入框
+                    document.getElementById('buyer-name').value = '';
+                    document.getElementById('buyer-phone').value = '';
+                } else {
+                    alert('訂單送出失敗，請稍後再試。錯誤訊息：' + result.message);
+                }
+            } catch (error) {
+                console.error('API 呼叫錯誤:', error);
+                alert('網路連線異常，請確認網路狀態後重試！');
+            } finally {
+                // 恢復按鈕狀態
+                checkoutBtn.disabled = false;
+                checkoutBtn.textContent = '送出訂單';
+                checkoutBtn.style.backgroundColor = '#4caf50';
+            }
+        });
     </script>
   </body>
 </html>
